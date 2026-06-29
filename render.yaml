@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: kalkulator-ciecia-laserowego
+    runtime: static
+    buildCommand: "echo 'Strona statyczna - brak budowania'"
+    staticPublishPath: .
+    pullRequestPreviewsEnabled: false
