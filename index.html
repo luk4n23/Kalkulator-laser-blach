@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kalkulator cięcia laserowego</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14110F; --surface:#1F1A16; --surface-2:#272019;
+    --accent:#E8730E; --accent-dim:#9A4D0A;
+    --text:#EDE8E1; --muted:#9A9189; --faint:#6B645D;
+    --line:rgba(255,255,255,0.08); --line-strong:rgba(255,255,255,0.16);
+    --ok:#5DCAA5; --warn:#EF9F27; --err:#E24B4A;
+    --mono:'IBM Plex Mono',monospace; --disp:'Saira Condensed',sans-serif; --body:'Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px}
+
+  header{border-bottom:1px solid var(--line-strong);padding-bottom:20px;margin-bottom:0}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin:0 0 8px}
+  h1{font-family:var(--disp);font-weight:700;font-size:clamp(34px,6vw,52px);line-height:.98;letter-spacing:.01em;margin:0;text-transform:uppercase}
+  .sub{color:var(--muted);margin:10px 0 0;max-width:60ch}
+
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line-strong);margin-top:4px}
+  .tab{background:none;border:none;border-bottom:3px solid transparent;color:var(--muted);font-family:var(--mono);font-size:14px;letter-spacing:.04em;padding:16px 22px;cursor:pointer;transition:.15s;margin-bottom:-1px;display:flex;align-items:center;gap:10px}
+  .tab:hover{color:var(--text)}
+  .tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+  .tab .amt{font-family:var(--disp);font-weight:600;font-size:18px;color:var(--faint);letter-spacing:0}
+  .tab.on .amt,.tab:hover .amt{color:var(--accent)}
+  .tabpane{padding-top:28px}
+  .tabpane[hidden]{display:none}
+
+  h2{font-family:var(--disp);font-weight:600;font-size:26px;text-transform:uppercase;letter-spacing:.02em;margin:48px 0 6px;color:var(--text)}
+  h2:first-child{margin-top:0}
+  h2 .num{font-family:var(--mono);font-size:13px;color:var(--accent);vertical-align:super;margin-right:8px;letter-spacing:0}
+  h3.sec{font-family:var(--mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:24px 0 0}
+  .lead{color:var(--muted);margin:0 0 20px;max-width:68ch}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px}
+
+  .matsel-label{font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--accent);display:flex;align-items:center;margin:0 0 10px}
+  .matsel{display:flex;gap:8px;margin-bottom:20px}
+  .matsel button{flex:1;background:var(--surface-2);border:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:13px;letter-spacing:.04em;padding:11px 8px;border-radius:8px;cursor:pointer;transition:.15s}
+  .matsel button:hover{color:var(--text);border-color:var(--line-strong)}
+  .matsel button.on{background:var(--accent);border-color:var(--accent);color:#14110F;font-weight:600}
+
+  table{width:100%;border-collapse:collapse}
+  .parts th{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);text-align:left;font-weight:500;padding:0 8px 8px}
+  .parts td{padding:4px 8px}
+  .parts input{width:100%}
+  input[type=text],input[type=number]{
+    background:var(--surface-2);border:1px solid var(--line);border-radius:6px;color:var(--text);
+    font-family:var(--mono);font-size:14px;padding:8px 10px;width:100%;transition:border-color .15s
+  }
+  input:focus{outline:none;border-color:var(--accent)}
+  input[type=number]{text-align:right}
+  input.f-err{border-color:var(--err)}
+  input.f-warn{border-color:var(--warn)}
+
+  .del{background:none;border:none;color:var(--faint);cursor:pointer;font-size:20px;line-height:1;padding:4px 8px;border-radius:6px;transition:.15s}
+  .del:hover{color:var(--accent);background:var(--surface-2)}
+  .add{margin-top:12px;background:var(--surface-2);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:13px;padding:9px 16px;border-radius:7px;cursor:pointer;transition:.15s}
+  .add:hover{border-color:var(--accent);color:var(--accent)}
+
+  .params{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-family:var(--mono);font-size:12px;color:var(--muted);display:flex;align-items:center}
+  .field .hint{font-size:12px;color:var(--faint);font-family:var(--body)}
+  .field .hint b{color:var(--accent);font-weight:500;font-family:var(--mono)}
+
+  .field.coded{border-left:5px solid var(--c);background:var(--ct);border-radius:0 8px 8px 0;padding:12px 14px}
+  .field.coded label{color:var(--c);font-weight:500}
+  .field.plain{border-left:5px solid var(--line-strong);background:var(--surface-2);border-radius:0 8px 8px 0;padding:12px 14px}
+
+  .presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+  .presets button{background:var(--bg);border:1px solid var(--line-strong);color:var(--muted);font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:6px;cursor:pointer;transition:.15s}
+  .presets button:hover{color:var(--text);border-color:var(--c)}
+  .presets button.on{background:var(--c);border-color:var(--c);color:#14110F;font-weight:600}
+
+  .step{font-family:var(--mono);font-weight:600;font-size:11px;background:var(--c);color:#14110F;border-radius:4px;padding:1px 6px;margin-right:9px}
+
+  h3.sec.coded{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;color:var(--c);background:var(--ct);border-left:5px solid var(--c);border-radius:0 8px 8px 0;padding:11px 16px;margin:30px 0 0;font-size:14px}
+  h3.sec.coded .htitle{display:flex;align-items:center}
+  .scale-wrap.coded{border-left:5px solid var(--c)}
+
+  .chip{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:none;padding:4px 10px;border-radius:6px;border:1px solid var(--c);background:var(--bg);color:var(--text);white-space:nowrap;font-weight:500}
+  .chip::before{content:"";width:11px;height:11px;border-radius:3px;background:var(--c);flex-shrink:0}
+  .chip b{color:var(--text);font-weight:500}
+  .keylegend{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 6px}
+  .k-thick{--c:#EFB44A;--ct:rgba(239,180,74,.13)} .k-rate{--c:#5BA3F0;--ct:rgba(91,163,240,.13)}
+  .k-cl{--c:#B59CF0;--ct:rgba(181,156,240,.13)} .k-handle{--c:#5DCAA5;--ct:rgba(93,202,165,.13)}
+  .k-mat{--c:#ED93B1;--ct:rgba(237,147,177,.13)} .k-mult{--c:#E8730E;--ct:rgba(232,115,14,.13)}
+
+  .issues{margin-top:18px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .issue{display:flex;gap:11px;padding:11px 16px;font-size:14px;border-bottom:1px solid var(--line);align-items:flex-start}
+  .issue:last-child{border-bottom:none}
+  .issue .ico{font-family:var(--mono);font-weight:600;flex-shrink:0;width:16px;text-align:center;line-height:1.5}
+  .issue.err{background:rgba(226,75,74,.09)} .issue.err .ico{color:var(--err)}
+  .issue.warn{background:rgba(239,159,39,.08)} .issue.warn .ico{color:var(--warn)}
+  .issue.ok{background:rgba(93,202,165,.07)} .issue.ok .ico{color:var(--ok)}
+  .issue b{font-weight:500;color:var(--text)}
+
+  .readout{background:#0E0C0A;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden}
+  .readout.blocked{opacity:.5}
+  .readout-head{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+  .readout-head .badge{color:var(--accent)}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr)}
+  .stat{padding:18px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .stat .lab{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  .stat .val{font-family:var(--disp);font-weight:600;font-size:30px;line-height:1;color:var(--text)}
+  .stat .val small{font-size:15px;color:var(--muted);font-weight:500}
+  .total{grid-column:1 / -1;background:var(--accent);border:none;display:flex;justify-content:space-between;align-items:baseline;padding:22px 18px}
+  .total .lab{color:#2A1604;font-weight:600;font-family:var(--mono);font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin:0}
+  .total .val{font-family:var(--disp);font-weight:700;font-size:52px;line-height:1;color:#14110F}
+  .total .per{font-family:var(--mono);font-size:13px;color:#5A3208;margin-left:auto;padding-left:16px}
+  .backbtn{margin-top:18px;background:var(--surface-2);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:13px;padding:11px 18px;border-radius:8px;cursor:pointer;transition:.15s}
+  .backbtn:hover{border-color:var(--accent);color:var(--accent)}
+
+  .costgroup{margin-top:20px;padding-top:18px;border-top:1px dashed var(--line-strong)}
+  .costgroup .ghead{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 12px;display:flex;align-items:center;gap:8px}
+  .costgroup .ghead i{width:9px;height:9px;border-radius:2px;background:var(--muted);display:inline-block}
+  .costgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+  .costgrid .field{border-left:5px solid #7C8B9A;background:rgba(124,139,154,.1);border-radius:0 8px 8px 0;padding:12px 14px}
+  .costgrid .field label{color:#9FB1C2}
+
+  .howto{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:0 10px 10px 0;padding:18px 22px;margin-bottom:24px}
+  .howto h3{font-family:var(--disp);font-weight:600;font-size:21px;text-transform:uppercase;letter-spacing:.02em;margin:0 0 12px;color:var(--text)}
+  .howto ol{margin:0;padding-left:0;list-style:none;counter-reset:step}
+  .howto li{position:relative;padding-left:38px;margin:0 0 11px;color:var(--text);counter-increment:step}
+  .howto li::before{content:counter(step);position:absolute;left:0;top:1px;width:24px;height:24px;background:var(--accent);color:#14110F;font-family:var(--mono);font-weight:600;font-size:13px;border-radius:6px;display:flex;align-items:center;justify-content:center}
+  .howto li b{color:var(--accent);font-weight:600}
+  .howto .tag{font-family:var(--mono);font-size:12px;color:var(--muted);display:block;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+  .howto .tag .g{color:var(--ok)} .howto .tag .r{color:var(--err)}
+
+  details.mh{margin-top:16px;background:#0E0C0A;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  details.mh summary{cursor:pointer;padding:14px 16px;font-family:var(--mono);font-size:13px;color:var(--accent);list-style:none;display:flex;align-items:center;gap:9px;user-select:none}
+  details.mh summary::-webkit-details-marker{display:none}
+  details.mh summary::before{content:"▸";transition:.15s;display:inline-block}
+  details.mh[open] summary::before{transform:rotate(90deg)}
+  .mh-body{padding:0 16px 18px}
+  .mh-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+  .mh-grid .field{gap:5px}
+  .mh-grid .field label{color:var(--muted);font-size:12px}
+  .mh-out{margin-top:18px;padding:16px;background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px}
+  .mh-out .big{font-family:var(--disp);font-weight:600;font-size:30px;color:var(--accent);line-height:1}
+  .mh-out .big small{font-size:14px;color:var(--muted);font-weight:500}
+  .mh-out .sub{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:6px;max-width:46ch}
+  .mh-apply{background:var(--accent);border:none;color:#14110F;font-family:var(--mono);font-weight:600;font-size:13px;padding:11px 16px;border-radius:7px;cursor:pointer;transition:.15s}
+  .mh-apply:hover{filter:brightness(1.08)}
+
+  #help-btn{position:fixed;right:20px;bottom:20px;z-index:40;background:var(--accent);color:#14110F;border:none;font-family:var(--mono);font-weight:600;font-size:14px;letter-spacing:.03em;padding:13px 20px;border-radius:30px;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.45);display:flex;align-items:center;gap:9px;transition:.15s}
+  #help-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
+  #help-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;visibility:hidden;transition:.2s;z-index:50}
+  #help-overlay.open{opacity:1;visibility:visible}
+  #help-drawer{position:fixed;top:0;right:0;height:100%;width:min(580px,94vw);background:var(--bg);border-left:1px solid var(--line-strong);box-shadow:-12px 0 40px rgba(0,0,0,.55);transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);z-index:51;display:flex;flex-direction:column}
+  #help-drawer.open{transform:translateX(0)}
+  .help-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line-strong);flex-shrink:0}
+  .help-head .ht{font-family:var(--disp);font-weight:600;font-size:24px;text-transform:uppercase;letter-spacing:.02em;color:var(--accent)}
+  .help-close{background:var(--surface-2);border:1px solid var(--line);color:var(--text);width:40px;height:40px;border-radius:8px;cursor:pointer;font-size:22px;line-height:1;transition:.15s;flex-shrink:0}
+  .help-close:hover{border-color:var(--accent);color:var(--accent)}
+  .help-body{overflow-y:auto;padding:22px}
+  .help-body h2:first-child{margin-top:0}
+
+  .profit{margin-top:20px;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden}
+  .profit-row{display:grid;grid-template-columns:repeat(3,1fr)}
+  .profit-row .stat{border-right:1px solid var(--line);border-bottom:none}
+  .profit-row .stat:last-child{border-right:none}
+  .profit-band{padding:20px 18px;display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line)}
+  .profit-band.pos{background:rgba(93,202,165,.14)}
+  .profit-band.neg{background:rgba(226,75,74,.16)}
+  .profit-band .lab{font-family:var(--mono);font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin:0}
+  .profit-band.pos .lab{color:var(--ok)} .profit-band.neg .lab{color:var(--err)}
+  .profit-band .val{font-family:var(--disp);font-weight:700;font-size:44px;line-height:1}
+  .profit-band.pos .val{color:var(--ok)} .profit-band.neg .val{color:var(--err)}
+  .profit-band .marg{font-family:var(--mono);font-size:14px;margin-left:auto;padding-left:16px}
+  .profit-band.pos .marg{color:var(--ok)} .profit-band.neg .marg{color:var(--err)}
+
+  .scale th,.scale td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);font-size:14px}
+  .scale th{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:500}
+  .scale td:first-child{color:var(--text)}
+  .scale .v{font-family:var(--mono);color:var(--accent);white-space:nowrap}
+  .scale tr:last-child td{border-bottom:none}
+  .scale-wrap{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 14px;overflow-x:auto;margin-top:10px}
+
+  dl{margin:0}
+  .term{padding:18px 0;border-bottom:1px solid var(--line)}
+  .term:last-child{border-bottom:none}
+  .term dt{font-family:var(--disp);font-weight:600;font-size:19px;text-transform:uppercase;letter-spacing:.02em;color:var(--accent);margin-bottom:6px}
+  .term dd{margin:0;color:var(--text)}
+  .term dd .why{display:block;color:var(--muted);font-size:14px;margin-top:6px}
+  code{font-family:var(--mono);font-size:13px;background:var(--surface-2);border:1px solid var(--line);padding:1px 6px;border-radius:4px;color:var(--accent)}
+
+  .formula{font-family:var(--mono);font-size:14px;background:#0E0C0A;border:1px solid var(--line-strong);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:16px 18px;margin:18px 0;color:var(--text);line-height:1.9}
+  .formula .op{color:var(--accent)}
+
+  .note{font-size:13px;color:var(--faint);margin-top:14px}
+  footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-family:var(--mono);font-size:12px;color:var(--faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+
+  @media(max-width:640px){
+    .params{grid-template-columns:1fr}
+    .stats{grid-template-columns:1fr 1fr}
+    .total{flex-wrap:wrap;gap:6px}
+    .total .per{padding-left:0}
+    .parts th:nth-child(1),.parts td:nth-child(1){display:none}
+    .matsel{flex-direction:column}
+    .tab{padding:14px 14px;font-size:13px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Wycena · cięcie laserowe blach</p>
+    <h1>Kalkulator<br>cięcia laserowego</h1>
+    <p class="sub">Wypełniasz pola po kolei, korzystając ze ściągawki ułożonej w tej samej kolejności. Gotowa cena czeka w zakładce „Wynik wyceny".</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="calc">Kalkulator</button>
+    <button class="tab" data-tab="result">Wynik wyceny <span class="amt" id="tab-amt">—</span></button>
+  </div>
+
+  <!-- ===================== TAB 1: KALKULATOR ===================== -->
+  <div class="tabpane" id="tab-calc">
+
+    <div class="howto">
+      <h3>Jak używać — w 5 krokach</h3>
+      <ol>
+        <li><b>Materiał</b> — kliknij stal, nierdzewkę albo aluminium.</li>
+        <li><b>Detale</b> — wpisz szerokość, wysokość i ilość każdego kształtu. „+ Dodaj detal" dla kolejnych.</li>
+        <li><b>Pola 2–6</b> — uzupełnij, korzystając z kolorowej ściągawki. Otwórz ją przyciskiem <b>„Ściągawka"</b> (prawy dolny róg) — wjeżdża z boku, nie musisz scrollować. Każdy kolor i numer prowadzi do jednej tabeli z podpowiedzią, ile wpisać.</li>
+        <li><b>Koszty własne</b> — ustaw raz, żeby kalkulator pokazał zysk, a nie tylko cenę. Koszt maszyny wyliczysz rozwijanym pomocnikiem „Policz koszt maszyny".</li>
+        <li><b>Wynik</b> — przełącz na zakładkę „Wynik wyceny" u góry: zobaczysz cenę, rozbicie i zysk.</li>
+      </ol>
+      <span class="tag"><span class="g">Zielony pasek zysku</span> = zarabiasz · <span class="r">czerwony</span> = wycena pod kreską. Pod polami świeci walidacja, która ostrzega przed niemożliwymi kombinacjami (np. za gruba blacha dla danego materiału).</span>
+    </div>
+
+    <div class="panel">
+      <p class="matsel-label"><span class="step k-mult">1</span>Materiał</p>
+      <div class="matsel" id="matsel">
+        <button data-mat="steel" class="on">Stal czarna</button>
+        <button data-mat="stainless">Nierdzewna</button>
+        <button data-mat="alu">Aluminium</button>
+      </div>
+
+      <table class="parts">
+        <thead><tr><th>Detal</th><th>Szer. mm</th><th>Wys. mm</th><th>Ilość</th><th></th></tr></thead>
+        <tbody id="rows">
+          <tr><td><input type="text" value="100x100"></td><td><input type="number" class="w" value="100"></td><td><input type="number" class="h" value="100"></td><td><input type="number" class="q" value="1200"></td><td><button class="del" aria-label="Usuń wiersz">&times;</button></td></tr>
+          <tr><td><input type="text" value="50x50"></td><td><input type="number" class="w" value="50"></td><td><input type="number" class="h" value="50"></td><td><input type="number" class="q" value="800"></td><td><button class="del" aria-label="Usuń wiersz">&times;</button></td></tr>
+        </tbody>
+      </table>
+      <button class="add" id="add">+ Dodaj detal</button>
+
+      <div class="params">
+        <div class="field coded k-thick"><label><span class="step k-thick">2</span>Grubość blachy — mm</label><input type="number" id="thick" value="0.6" step="0.1"><span class="hint" id="thick-hint">Wpływa na współczynnik i masę.</span></div>
+        <div class="field coded k-rate"><label><span class="step k-rate">3</span>Stawka bazowa — stal czarna (zł/m)</label><input type="number" id="rate" value="2" step="0.1"><span class="hint" id="rate-hint">Mnożona przez współczynnik materiału.</span></div>
+        <div class="field coded k-cl"><label><span class="step k-cl">4</span>Redukcja na common-line — %</label><input type="number" id="cl" value="15" step="5"><div class="presets" id="cl-presets"><button data-v="0">Luźny · 0%</button><button data-v="15">Mieszany · 15%</button><button data-v="40">Siatka · 40%</button></div><span class="hint">Standard to „Mieszany". Dla gęstej siatki kwadratów kliknij „Siatka".</span></div>
+        <div class="field coded k-handle"><label><span class="step k-handle">5</span>Obsługa — zł / sztuka</label><input type="number" id="handle" value="0.30" step="0.05"><span class="hint">Rozbiórka, liczenie, pakowanie. Klucz przy drobnicy.</span></div>
+        <div class="field coded k-mat"><label><span class="step k-mat">6</span>Cena materiału — zł / kg</label><input type="number" id="mat" value="0" step="0.5"><span class="hint" id="mat-hint">0 = blacha klienta.</span></div>
+        <div class="field plain"><label>Odpad materiału — %</label><input type="number" id="waste" value="20" step="5"><span class="hint">Płacisz za arkusz, nie za detale. Zwykle 15–25%.</span></div>
+      </div>
+
+      <div class="costgroup">
+        <p class="ghead"><i></i>Koszty własne — do wyliczenia zysku</p>
+        <div class="costgrid">
+          <div class="field"><label>Koszt maszyny — zł/m (stal czarna)</label><input type="number" id="cmach" value="1.0" step="0.1"><span class="hint">Realny koszt cięcia: amortyzacja, gaz, prąd, serwis. Skaluje się mnożnikiem materiału.</span></div>
+          <div class="field"><label>Koszt robocizny — zł/szt</label><input type="number" id="clab" value="0.15" step="0.05"><span class="hint">Twój realny koszt obsługi detalu (nie cena).</span></div>
+          <div class="field"><label>Koszt stały zlecenia — zł</label><input type="number" id="cfix" value="50" step="10"><span class="hint">Programowanie, ustawienie, załadunek — raz na zlecenie.</span></div>
+          <div class="field"><label>Narzut na materiał — %</label><input type="number" id="mmark" value="0" step="5"><span class="hint">0 = materiał po kosztach (przelot). Jeśli doliczasz, wpisz %.</span></div>
+        </div>
+
+        <details class="mh">
+          <summary>Policz koszt maszyny (maszynogodzina → zł/m)</summary>
+          <div class="mh-body">
+            <p class="hint" style="margin:0 0 14px">Wypełnij raz dla swojej maszyny. Kalkulator zsumuje koszt godziny pracy i podzieli przez prędkość cięcia — wynik wstawisz w pole „Koszt maszyny" jednym kliknięciem.</p>
+            <div class="mh-grid">
+              <div class="field"><label>Cena maszyny — zł</label><input type="number" id="mh-price" value="1200000" step="10000"><span class="hint">Ile kosztował laser (lub rata × liczba rat).</span></div>
+              <div class="field"><label>Żywotność — lata</label><input type="number" id="mh-years" value="8" step="1"><span class="hint">Przez ile lat planujesz na niej pracować.</span></div>
+              <div class="field"><label>Praca — godzin / rok</label><input type="number" id="mh-hpy" value="3000" step="100"><span class="hint">Ile godzin rocznie maszyna realnie tnie.</span></div>
+              <div class="field"><label>Serwis + eksploatacja — zł/h</label><input type="number" id="mh-serv" value="15" step="1"><span class="hint">Przeglądy, dysze, soczewki, części — na godzinę.</span></div>
+              <div class="field"><label>Gaz — zł/h</label><input type="number" id="mh-gas" value="18" step="1"><span class="hint">Tlen taniej, azot drożej. Koszt na godzinę cięcia.</span></div>
+              <div class="field"><label>Moc lasera — kW</label><input type="number" id="mh-kw" value="6" step="0.5"><span class="hint">Z tabliczki / specyfikacji źródła.</span></div>
+              <div class="field"><label>Cena prądu — zł/kWh</label><input type="number" id="mh-kwh" value="1.20" step="0.05"><span class="hint">Twoja stawka za prąd dla firmy.</span></div>
+              <div class="field"><label>Prędkość cięcia — m/h (dla tej grubości)</label><input type="number" id="mh-speed" value="300" step="10"><span class="hint">Ile metrów linii tnie na godzinę przy obecnej grubości. Z programu lub pomiaru.</span></div>
+            </div>
+            <div class="mh-out">
+              <div>
+                <div class="big" id="mh-perm">—</div>
+                <div class="sub" id="mh-hour">—</div>
+              </div>
+              <button class="mh-apply" id="mh-apply">Wstaw jako koszt maszyny →</button>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div class="issues" id="issues"></div>
+    </div>
+
+    <!-- SCIAGAWKA -->
+    <div id="help-content">
+    <h2><span class="num">01</span>Ściągawka — wypełniaj po kolei</h2>
+    <p class="lead">Tabele ułożone w tej samej kolejności co pola wyżej (1 → 6). Kolor i numer kroku łączą każdą tabelę z jej polem — czytasz z góry na dół i wpisujesz. Wartości orientacyjne dla lasera światłowodowego, nie cennik.</p>
+    <div class="keylegend">
+      <span class="chip k-mult"><b>1 · Materiał</b></span>
+      <span class="chip k-thick"><b>2 · Grubość blachy</b></span>
+      <span class="chip k-rate"><b>3 · Stawka bazowa</b></span>
+      <span class="chip k-cl"><b>4 · Redukcja common-line</b></span>
+      <span class="chip k-handle"><b>5 · Obsługa</b></span>
+      <span class="chip k-mat"><b>6 · Cena materiału</b></span>
+    </div>
+
+    <h3 class="sec coded k-mult"><span class="htitle"><span class="step k-mult">1</span>Materiał — współczynnik prędkości</span><span class="chip k-mult">liczone <b>auto</b></span></h3>
+    <div class="scale-wrap coded k-mult">
+      <table class="scale">
+        <thead><tr><th>Grubość</th><th>Stal czarna</th><th>Nierdzewna (N₂)</th><th>Aluminium (N₂)</th></tr></thead>
+        <tbody>
+          <tr><td>do 1 mm</td><td class="v">×1,0</td><td class="v">×1,3</td><td class="v">×1,4</td></tr>
+          <tr><td>1 – 2 mm</td><td class="v">×1,0</td><td class="v">×1,4</td><td class="v">×1,6</td></tr>
+          <tr><td>3 mm</td><td class="v">×1,0</td><td class="v">×1,6</td><td class="v">×1,8</td></tr>
+          <tr><td>4 – 5 mm</td><td class="v">×1,0</td><td class="v">×1,9</td><td class="v">×2,2</td></tr>
+          <tr><td>6 mm</td><td class="v">×1,0</td><td class="v">×2,1</td><td class="v">×2,4</td></tr>
+          <tr><td>8 mm</td><td class="v">×1,0</td><td class="v">×2,5</td><td class="v">×2,9</td></tr>
+          <tr><td>10 mm i więcej</td><td class="v">×1,0</td><td class="v">×3,0</td><td class="v">×3,5</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Tego nie wpisujesz — kalkulator dobiera mnożnik sam z wybranego materiału i grubości. Nierdzewka i aluminium tną się azotem, wolniej i drożej niż stal na tlenie.</p>
+
+    <h3 class="sec coded k-thick"><span class="htitle"><span class="step k-thick">2</span>Grubość — praktyczne limity</span><span class="chip k-thick">→ pole <b>Grubość blachy</b></span></h3>
+    <div class="scale-wrap coded k-thick">
+      <table class="scale">
+        <thead><tr><th>Materiał</th><th>Komfortowo</th><th>Górna granica</th><th>Zwykle nie tnie</th></tr></thead>
+        <tbody>
+          <tr><td>Stal czarna (O₂)</td><td class="v">do 15 mm</td><td class="v">15 – 20 mm</td><td class="v">powyżej 20 mm</td></tr>
+          <tr><td>Nierdzewna (N₂)</td><td class="v">do 8 mm</td><td class="v">8 – 12 mm</td><td class="v">powyżej 12 mm</td></tr>
+          <tr><td>Aluminium (N₂)</td><td class="v">do 5 mm</td><td class="v">5 – 8 mm</td><td class="v">powyżej 8 mm</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Granice zależą od mocy źródła (kW). Kalkulator ostrzega przy przekroczeniu typowego zakresu, ale ostatnie słowo ma Twoja maszyna.</p>
+
+    <h3 class="sec coded k-rate"><span class="htitle"><span class="step k-rate">3</span>Stawka bazowa (stal czarna) wg grubości</span><span class="chip k-rate">→ pole <b>Stawka bazowa</b></span></h3>
+    <div class="scale-wrap coded k-rate">
+      <table class="scale">
+        <thead><tr><th>Grubość</th><th>Prędkość cięcia</th><th>Stawka zł/m</th></tr></thead>
+        <tbody>
+          <tr><td>0,5 – 1 mm</td><td>bardzo szybko</td><td class="v">1,5 – 2,5</td></tr>
+          <tr><td>1 – 2 mm</td><td>szybko</td><td class="v">2 – 3,5</td></tr>
+          <tr><td>3 mm</td><td>średnio</td><td class="v">3 – 5</td></tr>
+          <tr><td>4 – 6 mm</td><td>wolniej</td><td class="v">5 – 9</td></tr>
+          <tr><td>8 – 10 mm</td><td>wolno</td><td class="v">9 – 16</td></tr>
+          <tr><td>12 mm i więcej</td><td>bardzo wolno</td><td class="v">16+</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Wpisujesz raz dla stali czarnej — mnożnik dla nierdzewki/aluminium dokłada się sam.</p>
+
+    <h3 class="sec coded k-cl"><span class="htitle"><span class="step k-cl">4</span>Redukcja na common-line</span><span class="chip k-cl">→ pole <b>Redukcja common-line</b></span></h3>
+    <div class="scale-wrap coded k-cl">
+      <table class="scale">
+        <thead><tr><th>Układ detali na arkuszu</th><th>Redukcja metrażu</th></tr></thead>
+        <tbody>
+          <tr><td>Pojedyncze, rozrzucone kształty</td><td class="v">0 %</td></tr>
+          <tr><td>Detale z prostymi bokami, luźno</td><td class="v">10 – 25 %</td></tr>
+          <tr><td>Prostokąty w siatce, wspólne krawędzie</td><td class="v">30 – 45 %</td></tr>
+          <tr><td>Gęsta siatka kwadratów / pasków</td><td class="v">do 50 %</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Do codziennych wycen bezpieczny standard to ~15% („Mieszany") — nie zaniżasz tam, gdzie wspólnych krawędzi nie ma. 40% rezerwuj dla oczywistych siatek prostokątów. Presety przy polu ustawiają to jednym kliknięciem.</p>
+
+    <h3 class="sec coded k-handle"><span class="htitle"><span class="step k-handle">5</span>Obsługa wg wielkości i ilości detali</span><span class="chip k-handle">→ pole <b>Obsługa</b></span></h3>
+    <div class="scale-wrap coded k-handle">
+      <table class="scale">
+        <thead><tr><th>Wielkość detalu</th><th>Ilość w zleceniu</th><th>Obsługa zł/szt</th></tr></thead>
+        <tbody>
+          <tr><td>Drobny &lt; 50 mm</td><td>do 500 szt</td><td class="v">0,40 – 0,60</td></tr>
+          <tr><td>Drobny &lt; 50 mm</td><td>500 – 2000 szt</td><td class="v">0,25 – 0,40</td></tr>
+          <tr><td>Drobny &lt; 50 mm</td><td>powyżej 2000 szt</td><td class="v">0,15 – 0,25</td></tr>
+          <tr><td>Średni 50 – 200 mm</td><td>do 200 szt</td><td class="v">0,50 – 0,90</td></tr>
+          <tr><td>Średni 50 – 200 mm</td><td>200 – 1000 szt</td><td class="v">0,30 – 0,50</td></tr>
+          <tr><td>Duży &gt; 200 mm</td><td>dowolnie</td><td class="v">0,80 – 2,00+</td></tr>
+          <tr><td>Z gradowaniem / odtłuszczaniem</td><td>dowolnie</td><td class="v">+0,15 – 0,40</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sec coded k-mat"><span class="htitle"><span class="step k-mat">6</span>Cena materiału — gęstość i proporcje</span><span class="chip k-mat">→ pole <b>Cena materiału</b></span></h3>
+    <div class="scale-wrap coded k-mat">
+      <table class="scale">
+        <thead><tr><th>Materiał</th><th>Gęstość</th><th>Cena za kg (względnie)</th></tr></thead>
+        <tbody>
+          <tr><td>Stal czarna (S235)</td><td class="v">7,85 g/cm³</td><td class="v">baza ×1</td></tr>
+          <tr><td>Nierdzewna (304/316)</td><td class="v">7,9 – 8,0 g/cm³</td><td class="v">~4 – 6× droższa</td></tr>
+          <tr><td>Aluminium</td><td class="v">2,70 g/cm³</td><td class="v">~2 – 3× droższe / kg</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Aluminium jest ~3× lżejsze — mimo wyższej ceny za kg koszt materiału na m² bywa zbliżony do stali. Ceny są zmienne i regionalne, wpisuj aktualne od dostawcy. Blacha klienta = 0.</p>
+
+    <!-- SLOWNIK -->
+    <h2><span class="num">02</span>Słownik pojęć</h2>
+    <p class="lead">Co znaczy każda pozycja i dlaczego wpływa na cenę.</p>
+
+    <div class="formula">
+      Cena <span class="op">≈</span> ( metry cięcia <span class="op">×</span> stawka bazowa <span class="op">×</span> mnożnik materiału )
+      <span class="op">+</span> ( liczba detali <span class="op">×</span> obsługa/szt )
+      <span class="op">+</span> materiał
+    </div>
+
+    <dl>
+      <div class="term"><dt>Limit grubości</dt><dd>Maksymalna grubość, jaką laser realnie przetnie dla danego materiału. Maleje od stali czarnej, przez nierdzewkę, do aluminium (odbija wiązkę).<span class="why">Kalkulator ostrzega na żółto przy granicy i na czerwono powyżej typowego zakresu. Faktyczny limit zależy od mocy źródła.</span></dd></div>
+      <div class="term"><dt>Mnożnik materiału</dt><dd>O ile wolniej (drożej za metr) tnie się dany materiał względem stali czarnej. Stal = ×1,0, nierdzewka i aluminium rosną z grubością.<span class="why">Stal tnie się tlenem (tani, szybki). Nierdzewka i aluminium wymagają azotu — wolniej i z droższym gazem.</span></dd></div>
+      <div class="term"><dt>Gaz tnący (tlen vs azot)</dt><dd>Tlen (O₂) przy stali czarnej przyspiesza cięcie, ale zostawia tlenek na krawędzi. Azot (N₂) daje czystą krawędź potrzebną przy nierdzewce i aluminium — kosztem prędkości.<span class="why">Krawędź po azocie nadaje się od razu do spawania/malowania.</span></dd></div>
+      <div class="term"><dt>Gęstość materiału</dt><dd>Masa kilograma blachy z tej samej objętości. Stal ~7,85, nierdzewka ~7,9–8,0, aluminium ~2,70 g/cm³.<span class="why">Aluminium o tej samej grubości waży ~jedną trzecią tego co stal — niższy koszt materiału.</span></dd></div>
+      <div class="term"><dt>Metry cięcia</dt><dd>Łączna długość linii do przejechania. Dla prostokąta to obwód: <code>2 × (szer. + wys.)</code> × ilość.<span class="why">Na cienkiej blasze laser jest tak szybki, że sam metraż rzadko jest najdroższy — chyba że materiał ma wysoki mnożnik.</span></dd></div>
+      <div class="term"><dt>Common-line</dt><dd>Gdy detale stykają się bokami w siatce, wspólną krawędź tnie się raz, nie dwa razy. Skraca metraż nawet o połowę.<span class="why">Identyczne kwadraty gęsto wychodzą taniej niż rozrzucone po arkuszu.</span></dd></div>
+      <div class="term"><dt>Stawka bazowa (zł/m)</dt><dd>Koszt przejechania metra w stali czarnej — amortyzacja, prąd, tlen, optyka, marża. Mnożona przez współczynnik materiału.<span class="why">Wyznaczysz ją wstecz: znana cena zlecenia ze stali minus obsługa i materiał, podzielone przez metry.</span></dd></div>
+      <div class="term"><dt>Obsługa (zł/szt)</dt><dd>Praca poza cięciem: wyjęcie detalu, oczyszczenie mostków, liczenie, segregacja, pakowanie.<span class="why">Winduje cenę drobnicy. Przy 2000 sztuk każde 0,10 zł różnicy to 200 zł.</span></dd></div>
+      <div class="term"><dt>Materiał i odpad</dt><dd>Masa blachy × cena za kg, powiększona o odpad (ścinki i obrzeże). Płacisz za arkusz, nie za same kształty.<span class="why">Zwarty nesting 15–20%, nieregularne kształty nawet 30–40%. Blacha klienta = cena 0.</span></dd></div>
+      <div class="term"><dt>Cena / sztuka</dt><dd>Suma podzielona przez liczbę detali. Najszybszy sprawdzian zdrowego rozsądku.<span class="why">Kwadracik po kilka złotych — zawyżyłeś; ułamek grosza — zjadłeś marżę.</span></dd></div>
+    </dl>
+    </div>
+
+  </div>
+
+  <!-- ===================== TAB 2: WYNIK ===================== -->
+  <div class="tabpane" id="tab-result" hidden>
+    <h2>Wynik wyceny</h2>
+    <p class="lead">Cena policzona z danych z zakładki „Kalkulator". Jeśli były błędy, wróć i je popraw.</p>
+
+    <div class="readout" id="readout">
+      <div class="readout-head"><span>Rozbicie ceny (sprzedaż)</span><span class="badge" id="ro-mat">Stal czarna · ×1,0</span></div>
+      <div class="stats">
+        <div class="stat"><p class="lab">Stawka efekt.</p><p class="val" id="o-rate">—</p></div>
+        <div class="stat"><p class="lab">Metry cięcia</p><p class="val" id="o-m">—</p></div>
+        <div class="stat"><p class="lab">Sztuk razem</p><p class="val" id="o-q">—</p></div>
+        <div class="stat"><p class="lab">Masa netto</p><p class="val" id="o-kg">—</p></div>
+        <div class="stat"><p class="lab">Cięcie</p><p class="val" id="o-cut">—</p></div>
+        <div class="stat"><p class="lab">Obsługa</p><p class="val" id="o-han">—</p></div>
+        <div class="stat"><p class="lab">Materiał</p><p class="val" id="o-mat">—</p></div>
+        <div class="stat" style="grid-column:span 2"><p class="lab">Masa z odpadem (arkusz)</p><p class="val" id="o-kgs">—</p></div>
+        <div class="total"><p class="lab">Cena netto</p><p class="val" id="o-sum">—</p><span class="per" id="o-per"></span></div>
+      </div>
+    </div>
+
+    <div class="profit" id="profit">
+      <div class="profit-row">
+        <div class="stat"><p class="lab">Przychód (cena)</p><p class="val" id="p-rev">—</p></div>
+        <div class="stat"><p class="lab">Koszt własny</p><p class="val" id="p-cost">—</p></div>
+        <div class="stat"><p class="lab">Zysk / sztuka</p><p class="val" id="p-per">—</p></div>
+      </div>
+      <div class="profit-band pos" id="p-band"><p class="lab">Zysk netto</p><p class="val" id="p-profit">—</p><span class="marg" id="p-marg"></span></div>
+    </div>
+
+    <button class="backbtn" id="backbtn">← Wróć do kalkulatora</button>
+    <p class="note">„Cena" to ile bierzesz (ze stawek sprzedaży). „Koszt własny" liczy się z pól <b style="color:var(--text);font-weight:500">Koszty własne</b> w kalkulatorze. Zysk = cena − koszt. Wartości orientacyjne — skalibruj koszty pod swój warsztat.</p>
+  </div>
+
+  <footer>
+    <span>Kalkulator cięcia laserowego</span>
+    <span>Wartości orientacyjne — skalibruj pod swój warsztat</span>
+  </footer>
+
+</div>
+
+<button id="help-btn" aria-label="Otwórz ściągawkę"><span style="font-size:17px">⊞</span> Ściągawka</button>
+<div id="help-overlay"></div>
+<aside id="help-drawer" aria-label="Pomoc i ściągawka">
+  <div class="help-head"><span class="ht">Pomoc</span><button class="help-close" id="help-close" aria-label="Zamknij">✕</button></div>
+  <div class="help-body" id="help-body"></div>
+</aside>
+
+<script>
+(function(){
+  var MAT={
+    steel:    {name:'Stal czarna', dens:7.85, bands:[1.0,1.0,1.0,1.0,1.0,1.0,1.0], twarn:15, tmax:20},
+    stainless:{name:'Nierdzewna',  dens:7.95, bands:[1.3,1.4,1.6,1.9,2.1,2.5,3.0], twarn:8,  tmax:12},
+    alu:      {name:'Aluminium',   dens:2.70, bands:[1.4,1.6,1.8,2.2,2.4,2.9,3.5], twarn:5,  tmax:8}
+  };
+  var current='steel';
+  var SHEET_MAX=3000;
+
+  function band(arr,t){
+    if(t<=1) return arr[0]; if(t<=2) return arr[1]; if(t<=3) return arr[2];
+    if(t<=5) return arr[3]; if(t<=6) return arr[4]; if(t<=8) return arr[5]; return arr[6];
+  }
+  function rateBand(t){
+    if(t<=1) return [1.5,2.5,'1,5–2,5'];
+    if(t<=2) return [2,3.5,'2–3,5'];
+    if(t<=3) return [3,5,'3–5'];
+    if(t<=6) return [5,9,'5–9'];
+    if(t<=10) return [9,16,'9–16'];
+    return [16,999,'16+'];
+  }
+  function pl(n,d){return n.toLocaleString('pl-PL',{minimumFractionDigits:d,maximumFractionDigits:d});}
+
+  var tbody=document.getElementById('rows');
+  function num(el){var v=parseFloat(el.value);return isNaN(v)?0:v;}
+  function get(id){return num(document.getElementById(id));}
+  function raw(id){return document.getElementById(id).value.trim();}
+
+  function clearMarks(){document.querySelectorAll('input.f-err,input.f-warn').forEach(function(i){i.classList.remove('f-err','f-warn');});}
+
+  function validate(){
+    var issues=[]; clearMarks();
+    var m=MAT[current];
+    var thick=get('thick'), rate=get('rate'), handle=get('handle'), cl=get('cl'), waste=get('waste'), matkg=get('mat');
+
+    if(raw('thick')==='' || thick<=0){ issues.push({l:'err',t:'<b>Grubość blachy</b> musi być większa od zera.'}); document.getElementById('thick').classList.add('f-err'); }
+    else if(thick>m.tmax){ issues.push({l:'err',t:'<b>'+m.name+' '+pl(thick,1)+' mm</b> przekracza typowy zakres lasera światłowodowego (do ~'+m.tmax+' mm). Zwykła maszyna tego nie przetnie — sprawdź moc źródła.'}); document.getElementById('thick').classList.add('f-err'); }
+    else if(thick>m.twarn){ issues.push({l:'warn',t:'<b>'+m.name+' '+pl(thick,1)+' mm</b> to górna granica (komfortowo do ~'+m.twarn+' mm). Cięcie wolne i wymaga mocnego źródła.'}); document.getElementById('thick').classList.add('f-warn'); }
+
+    if(raw('rate')==='' || rate<=0){ issues.push({l:'err',t:'<b>Stawka bazowa</b> musi być większa od zera.'}); document.getElementById('rate').classList.add('f-err'); }
+    else if(thick>0){
+      var rb=rateBand(thick);
+      if(rate < rb[0]*0.9){ issues.push({l:'warn',t:'<b>Stawka bazowa '+pl(rate,1)+' zł/m</b> jest za niska dla grubości '+pl(thick,1)+' mm — ściągawka podaje '+rb[2]+' zł/m. Tyle wystarcza dopiero dla cienkiej blachy.'}); document.getElementById('rate').classList.add('f-warn'); }
+      else if(rb[1]<900 && rate > rb[1]*1.15){ issues.push({l:'warn',t:'<b>Stawka bazowa '+pl(rate,1)+' zł/m</b> jest wysoka dla grubości '+pl(thick,1)+' mm — ściągawka podaje '+rb[2]+' zł/m.'}); document.getElementById('rate').classList.add('f-warn'); }
+    }
+
+    if(handle<0){ issues.push({l:'err',t:'<b>Obsługa</b> nie może być ujemna.'}); document.getElementById('handle').classList.add('f-err'); }
+    else if(handle>5){ issues.push({l:'warn',t:'<b>Obsługa '+pl(handle,2)+' zł/szt</b> jest bardzo wysoka — typowo 0,15–2,00 zł.'}); document.getElementById('handle').classList.add('f-warn'); }
+
+    if(cl<0){ issues.push({l:'err',t:'<b>Redukcja common-line</b> nie może być ujemna.'}); document.getElementById('cl').classList.add('f-err'); }
+    else if(cl>50){ issues.push({l:'warn',t:'<b>Redukcja '+pl(cl,0)+'%</b> jest mało realna — nawet gęsta siatka rzadko przekracza 50%.'}); document.getElementById('cl').classList.add('f-warn'); }
+
+    if(waste<0){ issues.push({l:'err',t:'<b>Odpad</b> nie może być ujemny.'}); document.getElementById('waste').classList.add('f-err'); }
+    else if(waste>60){ issues.push({l:'warn',t:'<b>Odpad '+pl(waste,0)+'%</b> jest bardzo wysoki — sprawdź nesting.'}); document.getElementById('waste').classList.add('f-warn'); }
+
+    if(matkg<0){ issues.push({l:'err',t:'<b>Cena materiału</b> nie może być ujemna.'}); document.getElementById('mat').classList.add('f-err'); }
+
+    var idx=0;
+    tbody.querySelectorAll('tr').forEach(function(tr){
+      idx++;
+      var wEl=tr.querySelector('.w'), hEl=tr.querySelector('.h'), qEl=tr.querySelector('.q');
+      var w=num(wEl), h=num(hEl), q=num(qEl);
+      var nm=tr.querySelector('input[type=text]').value || ('detal '+idx);
+      if(w<0||h<0){ issues.push({l:'err',t:'<b>'+nm+'</b>: wymiar nie może być ujemny.'}); if(w<0)wEl.classList.add('f-err'); if(h<0)hEl.classList.add('f-err'); }
+      if(q<0){ issues.push({l:'err',t:'<b>'+nm+'</b>: ilość nie może być ujemna.'}); qEl.classList.add('f-err'); }
+      if(q>0 && Math.floor(q)!==q){ issues.push({l:'warn',t:'<b>'+nm+'</b>: ilość '+q+' nie jest całkowita.'}); qEl.classList.add('f-warn'); }
+      if(w>SHEET_MAX||h>SHEET_MAX){ issues.push({l:'warn',t:'<b>'+nm+'</b>: bok '+Math.max(w,h)+' mm nie zmieści się na typowym arkuszu (~'+SHEET_MAX+'×1500 mm).'}); if(w>SHEET_MAX)wEl.classList.add('f-warn'); if(h>SHEET_MAX)hEl.classList.add('f-warn'); }
+    });
+    return issues;
+  }
+
+  function renderIssues(issues){
+    var box=document.getElementById('issues');
+    var hasErr=issues.some(function(i){return i.l==='err';});
+    if(issues.length===0){ box.innerHTML='<div class="issue ok"><span class="ico">✓</span><span>Wartości wyglądają sensownie dla wybranego materiału.</span></div>'; }
+    else { box.innerHTML=issues.map(function(i){var ico=i.l==='err'?'✕':'!';return '<div class="issue '+i.l+'"><span class="ico">'+ico+'</span><span>'+i.t+'</span></div>';}).join(''); }
+    return hasErr;
+  }
+
+  function calc(){
+    var hasErr=renderIssues(validate());
+    markPreset();
+    var ro=document.getElementById('readout');
+    var amt=document.getElementById('tab-amt');
+    var m=MAT[current];
+    var baseRate=get('rate'),handle=get('handle'),cl=get('cl')/100,thick=get('thick'),matkg=get('mat'),waste=get('waste')/100;
+    var cmach=get('cmach'),clab=get('clab'),cfix=get('cfix'),mmark=get('mmark')/100;
+    var mult=band(m.bands,thick>0?thick:0.1);
+    var effRate=baseRate*mult;
+
+    var rawM=0,qty=0,area=0;
+    tbody.querySelectorAll('tr').forEach(function(tr){
+      var w=Math.max(0,num(tr.querySelector('.w'))),h=Math.max(0,num(tr.querySelector('.h'))),q=Math.max(0,num(tr.querySelector('.q')));
+      rawM+=(2*(w+h)/1000)*q; qty+=q; area+=w*h*q;
+    });
+    var effM=rawM*(1-Math.min(Math.max(cl,0),1));
+    var cut=effM*Math.max(effRate,0);
+    var han=qty*Math.max(handle,0);
+    var mass=area*Math.max(thick,0)*m.dens*1e-6;
+    var massSheet=mass*(1+Math.max(waste,0));
+    var matBuy=massSheet*Math.max(matkg,0);
+    var matSell=matBuy*(1+Math.max(mmark,0));
+    var sum=cut+han+matSell;
+
+    var cutCost=effM*Math.max(cmach*mult,0);
+    var labCost=qty*Math.max(clab,0);
+    var ownCost=cutCost+labCost+matBuy+Math.max(cfix,0);
+    var profit=sum-ownCost;
+    var marg=sum>0?profit/sum*100:0;
+
+    document.getElementById('ro-mat').textContent=m.name+' · ×'+pl(mult,1);
+    document.getElementById('rate-hint').innerHTML='Efekt. dla '+m.name.toLowerCase()+' '+pl(thick,1)+' mm: <b>'+pl(effRate,2)+' zł/m</b> (×'+pl(mult,1)+').';
+
+    if(hasErr){
+      ro.classList.add('blocked');
+      ['o-rate','o-m','o-q','o-kg','o-cut','o-han','o-mat','o-kgs'].forEach(function(id){document.getElementById(id).textContent='—';});
+      document.getElementById('o-sum').textContent='—';
+      document.getElementById('o-per').textContent='popraw błędy w kalkulatorze';
+      ['p-rev','p-cost','p-per','p-profit'].forEach(function(id){document.getElementById(id).textContent='—';});
+      document.getElementById('p-marg').textContent='';
+      amt.textContent='!';
+      return;
+    }
+    ro.classList.remove('blocked');
+    document.getElementById('o-rate').innerHTML=pl(effRate,2)+' <small>zł/m</small>';
+    document.getElementById('o-m').innerHTML=Math.round(effM)+' <small>m</small>';
+    document.getElementById('o-q').innerHTML=qty.toLocaleString('pl-PL')+' <small>szt</small>';
+    document.getElementById('o-kg').innerHTML=pl(mass,1)+' <small>kg</small>';
+    document.getElementById('o-kgs').innerHTML=pl(massSheet,1)+' <small>kg</small>';
+    document.getElementById('o-cut').innerHTML=Math.round(cut)+' <small>zł</small>';
+    document.getElementById('o-han').innerHTML=Math.round(han)+' <small>zł</small>';
+    document.getElementById('o-mat').innerHTML=(matkg>0?Math.round(matSell):'0')+' <small>zł</small>';
+    document.getElementById('o-sum').textContent=Math.round(sum)+' zł';
+    document.getElementById('o-per').textContent=qty>0?pl(sum/qty,2)+' zł/szt':'';
+    amt.textContent=Math.round(sum)+' zł';
+
+    document.getElementById('p-rev').innerHTML=Math.round(sum)+' <small>zł</small>';
+    document.getElementById('p-cost').innerHTML=Math.round(ownCost)+' <small>zł</small>';
+    document.getElementById('p-per').innerHTML=qty>0?pl(profit/qty,2)+' <small>zł</small>':'—';
+    document.getElementById('p-profit').textContent=(profit>=0?'+':'')+Math.round(profit)+' zł';
+    document.getElementById('p-marg').textContent=(sum>0?'marża '+pl(marg,0)+'%':'');
+    var band2=document.getElementById('p-band');
+    band2.classList.toggle('pos',profit>=0);
+    band2.classList.toggle('neg',profit<0);
+  }
+
+  // TABS
+  var tabs=document.querySelectorAll('.tab');
+  function showTab(name){
+    tabs.forEach(function(t){t.classList.toggle('on',t.getAttribute('data-tab')===name);});
+    document.getElementById('tab-calc').hidden=(name!=='calc');
+    document.getElementById('tab-result').hidden=(name!=='result');
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  tabs.forEach(function(t){t.addEventListener('click',function(){showTab(t.getAttribute('data-tab'));});});
+  document.getElementById('backbtn').addEventListener('click',function(){showTab('calc');});
+
+  document.getElementById('matsel').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    current=b.getAttribute('data-mat');
+    this.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});
+    calc();
+  });
+
+  var clPresets=document.getElementById('cl-presets');
+  clPresets.addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    document.getElementById('cl').value=b.getAttribute('data-v');
+    calc();
+  });
+  function markPreset(){
+    var v=String(get('cl'));
+    clPresets.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x.getAttribute('data-v')===v);});
+  }
+
+  function bindRow(tr){
+    tr.querySelectorAll('input').forEach(function(i){i.addEventListener('input',calc);});
+    tr.querySelector('.del').addEventListener('click',function(){tr.remove();calc();});
+  }
+  tbody.querySelectorAll('tr').forEach(bindRow);
+
+  document.getElementById('add').addEventListener('click',function(){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td><input type="text" value="detal"></td><td><input type="number" class="w" value="0"></td><td><input type="number" class="h" value="0"></td><td><input type="number" class="q" value="0"></td><td><button class="del" aria-label="Usuń wiersz">&times;</button></td>';
+    tbody.appendChild(tr);bindRow(tr);tr.querySelector('.w').focus();calc();
+  });
+
+  ['rate','handle','cl','thick','mat','waste','cmach','clab','cfix','mmark'].forEach(function(id){document.getElementById(id).addEventListener('input',calc);});
+
+  // POMOCNIK: maszynogodzina -> zł/m
+  var mhPerM=0;
+  function calcMachine(){
+    var price=get('mh-price'),years=get('mh-years'),hpy=get('mh-hpy'),serv=get('mh-serv'),
+        gas=get('mh-gas'),kw=get('mh-kw'),kwh=get('mh-kwh'),speed=get('mh-speed');
+    var amort=(years>0&&hpy>0)?price/(years*hpy):0;
+    var power=Math.max(kw,0)*Math.max(kwh,0);
+    var perHour=amort+Math.max(serv,0)+Math.max(gas,0)+power;
+    mhPerM=speed>0?perHour/speed:0;
+    document.getElementById('mh-perm').innerHTML=pl(mhPerM,2)+' <small>zł/m</small>';
+    document.getElementById('mh-hour').textContent='Maszynogodzina ≈ '+Math.round(perHour)+' zł/h  =  amortyzacja '+Math.round(amort)+' + serwis '+Math.round(serv)+' + gaz '+Math.round(gas)+' + prąd '+pl(power,1)+'  ÷  '+Math.round(speed)+' m/h';
+  }
+  ['mh-price','mh-years','mh-hpy','mh-serv','mh-gas','mh-kw','mh-kwh','mh-speed'].forEach(function(id){document.getElementById(id).addEventListener('input',calcMachine);});
+  document.getElementById('mh-apply').addEventListener('click',function(){
+    document.getElementById('cmach').value=mhPerM.toFixed(2);
+    calc();
+  });
+  calcMachine();
+
+  // PANEL POMOCY (wysuwany)
+  var drawer=document.getElementById('help-drawer'), overlay=document.getElementById('help-overlay');
+  document.getElementById('help-body').appendChild(document.getElementById('help-content'));
+  function openHelp(){drawer.classList.add('open');overlay.classList.add('open');}
+  function closeHelp(){drawer.classList.remove('open');overlay.classList.remove('open');}
+  document.getElementById('help-btn').addEventListener('click',openHelp);
+  document.getElementById('help-close').addEventListener('click',closeHelp);
+  overlay.addEventListener('click',closeHelp);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeHelp();});
+  calc();
+})();
+</script>
+</body>
+</html>
