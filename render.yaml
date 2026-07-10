@@ -1,7 +1,12 @@
+# Render Blueprint — statyczna strona (bez budowania)
+# Deploy: w panelu Render kliknij "New +" > "Blueprint" i wskaż to repo.
 services:
   - type: web
-    name: kalkulator-ciecia-laserowego
+    name: ulamex-kalkulator-laser
     runtime: static
-    buildCommand: "echo 'Strona statyczna - brak budowania'"
     staticPublishPath: .
-    pullRequestPreviewsEnabled: false
+    buildCommand: ""
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
