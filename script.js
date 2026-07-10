@@ -14,7 +14,7 @@ const num2 = new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumF
 const int0 = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
 
 /* ---------- Domyślne ustawienia (nie detal) ---------- */
-const DEFAULTS = { korekcja: '1.2', stawka: '500', marza: '20' };
+const DEFAULTS = { korekcja: '1.2', stawka: '600', marza: '20' };
 
 /* ---------- Skróty do elementów ---------- */
 const $ = (id) => document.getElementById(id);
